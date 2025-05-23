@@ -6,7 +6,7 @@ import json
 import time
 from datetime import datetime
 from PIL import Image
-import pillow_avif_plugin # For AVIF support
+import pillow_avif
 from dotenv import load_dotenv
 from cryptography.fernet import Fernet
 from base64 import b64encode
