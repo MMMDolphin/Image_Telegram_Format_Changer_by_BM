@@ -6,6 +6,7 @@ import json
 import time
 from datetime import datetime
 from PIL import Image
+import pillow_avif_plugin # For AVIF support
 from dotenv import load_dotenv
 from cryptography.fernet import Fernet
 from base64 import b64encode
@@ -33,7 +34,8 @@ SUPPORTED_FORMATS = {
     'WEBP': '.webp',
     'GIF': '.gif',
     'TIFF': '.tiff',
-    'BMP': '.bmp'
+    'BMP': '.bmp',
+    'AVIF': '.avif' # Added AVIF
 }
 
 # Statistics file
@@ -218,8 +220,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "2. Or send a ZIP file containing images\n"
         "3. I'll detect the format automatically\n"
         "4. Choose the desired format from the inline buttons\n"
-        "5. I'll convert and send back your image(s)\n\n"
-        "Supported formats: JPEG, PNG, WEBP, GIF, TIFF, BMP\n\n"
+        "5. I'll convert and send back your image(s) in a ZIP file.\n\n"
+        "Supported formats: JPEG, PNG, WEBP, GIF, TIFF, BMP, AVIF\n\n"
         "Maximum file size: 20MB\n"
         "Maximum batch size: 50 images"
     )
@@ -351,7 +353,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 for filename_in_zip in os.listdir(temp_extract_dir):
                     original_full_path = os.path.join(temp_extract_dir, filename_in_zip)
                     if os.path.isfile(original_full_path) and \
-                       any(filename_in_zip.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.tiff', '.bmp']):
+                       any(filename_in_zip.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.tiff', '.bmp', '.avif']): # Added .avif
                         
                         # Create a new temporary file to store this image from the zip,
                         # ensuring it persists until we are done with it.
@@ -426,9 +428,13 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     img = Image.open(temp_file_path)
                     logger.info(f"Opened {temp_file_path}: format={img.format}, mode={img.mode}, size={img.size}")
                     
+                    # Image mode conversion logic
                     if target_format == 'JPEG' and img.mode in ('RGBA', 'P'):
                         img = img.convert('RGB')
                     elif target_format == 'WEBP' and img.mode not in ('RGB', 'RGBA'):
+                        img = img.convert('RGBA')
+                    elif target_format == 'AVIF' and img.mode not in ('RGB', 'RGBA'): # AVIF often supports RGBA
+                        logger.info(f"Converting image mode from {img.mode} to RGBA for AVIF.")
                         img = img.convert('RGBA')
                     
                     # Construct the new filename for inside the zip
